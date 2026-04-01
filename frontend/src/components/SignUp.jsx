@@ -1,41 +1,72 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { authAPI } from "../services/api";
 
 export const SignUp = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
+    email: "",
     phone: "",
-    dob: "",
-    accountNumber: "",
-    accountType: "Savings",
-    username: "",
     password: "",
     confirmPassword: ""
   });
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
-  const handleSignup = (e) => {
-    e.preventDefault();
+  const handleSignup = async (e) => {
+  e.preventDefault();
+  setError("");
 
-    // Check if any field is empty
-    for (const [key, value] of Object.entries(formData)) {
-      if (!value.trim()) {
-        alert(`Please enter your ${key}`);
-        return;
-      }
+  if (formData.password !== formData.confirmPassword) {
+    setError("Passwords do not match");
+    return;
+  }
 
-      console.log("Navigating to OTP with phone:", formData.phone);
-navigate("/verify-otp", { state: { phone: formData.phone } });
+  try {
+    const res = await authAPI.register({
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
+    });
 
+    console.log("Register Response:", res);
+
+    // If your API wrapper returns axios response
+    const user = res?.data?.user || res?.user;
+
+    if (!user) {
+      setError(
+        res?.data?.message ||
+        res?.message ||
+        "Registration failed. No user data returned."
+      );
+      return;
     }
 
-    // Proceed to OTP verification page if all fields are filled
-    navigate("/verify-otp", { state: { phone: formData.phone } });
-  };
+    navigate("/account-success", {
+      state: {
+        accountNumber: user.accountNumber,
+        email: formData.email,
+      },
+    });
+  } catch (err) {
+    console.error("Signup Error:", err);
+
+    setError(
+      err?.response?.data?.message ||
+      err?.message ||
+      "Registration failed"
+    );
+  }
+};
 
   return (
     <div className="min-h-screen flex">
@@ -43,6 +74,13 @@ navigate("/verify-otp", { state: { phone: formData.phone } });
         <h1 className="text-3xl font-bold text-blue-700 mb-6">MyBank</h1>
         <h2 className="text-2xl font-semibold text-gray-800 mb-2">Sign Up</h2>
         <p className="text-gray-500 mb-8">Open your secure account</p>
+
+        {/* Error Box */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSignup}>
           {/* Full Name */}
@@ -53,6 +91,19 @@ navigate("/verify-otp", { state: { phone: formData.phone } });
             value={formData.name}
             onChange={handleChange}
             placeholder="Enter your full name"
+            required
+            className="w-full px-4 py-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          {/* Email */}
+          <label className="block text-gray-700 font-medium mb-1">Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="Enter your email"
+            required
             className="w-full px-4 py-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
@@ -64,50 +115,7 @@ navigate("/verify-otp", { state: { phone: formData.phone } });
             value={formData.phone}
             onChange={handleChange}
             placeholder="Enter your phone number"
-            className="w-full px-4 py-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-
-          {/* Date of Birth */}
-          <label className="block text-gray-700 font-medium mb-1">Date of Birth</label>
-          <input
-            type="date"
-            name="dob"
-            value={formData.dob}
-            onChange={handleChange}
-            className="w-full px-4 py-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-
-          {/* Account Number */}
-          <label className="block text-gray-700 font-medium mb-1">Account Number</label>
-          <input
-            type="text"
-            name="accountNumber"
-            value={formData.accountNumber}
-            onChange={handleChange}
-            placeholder="Enter your account number"
-            className="w-full px-4 py-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-
-          {/* Account Type */}
-          <label className="block text-gray-700 font-medium mb-1">Account Type</label>
-          <select
-            name="accountType"
-            value={formData.accountType}
-            onChange={handleChange}
-            className="w-full px-4 py-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option>Savings</option>
-            <option>Current</option>
-          </select>
-
-          {/* Username */}
-          <label className="block text-gray-700 font-medium mb-1">Username</label>
-          <input
-            type="text"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            placeholder="Create a username"
+            required
             className="w-full px-4 py-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
@@ -119,6 +127,7 @@ navigate("/verify-otp", { state: { phone: formData.phone } });
             value={formData.password}
             onChange={handleChange}
             placeholder="Enter your password"
+            required
             className="w-full px-4 py-2 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
@@ -130,6 +139,7 @@ navigate("/verify-otp", { state: { phone: formData.phone } });
             value={formData.confirmPassword}
             onChange={handleChange}
             placeholder="Re-enter your password"
+            required
             className="w-full px-4 py-2 mb-6 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
