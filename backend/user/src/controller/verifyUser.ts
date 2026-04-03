@@ -4,7 +4,7 @@ import { generateToken } from "./generateToken.js";
 import TryCatch from "../config/TryCatch.js";
 
 export const verifyUser = TryCatch(async (req, res) => {
-  const { email, otp: enteredOTP } = req.body;
+  const { email, otp: enteredOTP, isAdminLogin } = req.body;
 
   if (!email || !enteredOTP) {
     res.status(400).json({
@@ -37,11 +37,19 @@ export const verifyUser = TryCatch(async (req, res) => {
     return;
   }
 
+  if (isAdminLogin && !user.isAdmin) {
+  res.status(403).json({
+    message: "You are not authorized as admin",
+  });
+  return;
+}
+
   const token = generateToken(user);
 
-  res.json({
+    res.json({
     message: "User Verified",
     user,
     token,
+    isAdmin: user.isAdmin,
   });
 });

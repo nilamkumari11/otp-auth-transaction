@@ -1,31 +1,32 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 
 // Helpers
-const getToken = () => localStorage.getItem('token');
+const getToken = () => localStorage.getItem("token");
 
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   const headers = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...options.headers,
   };
 
   const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(url, { ...options, headers });
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.message || 'Something went wrong');
+  if (!res.ok) throw new Error(data.message || "Something went wrong");
   return data;
 };
 
 // Auth APIs
 export const authAPI = {
   register: async (userData) =>
-    apiRequest('/register', {
-      method: 'POST',
+    apiRequest("/register", {
+      method: "POST",
       body: JSON.stringify({
         name: userData.name,
         email: userData.email,
@@ -35,34 +36,39 @@ export const authAPI = {
     }),
 
   login: async (creds) =>
-    apiRequest('/login', {
-      method: 'POST',
+    apiRequest("/login", {
+      method: "POST",
       body: JSON.stringify({
         email: creds.email,
         password: creds.password,
-        accountNumber: creds.accountNumber, // Added as per new login requirement
+        accountNumber: creds.accountNumber,
+        isAdminLogin: creds.isAdminLogin || false,
       }),
     }),
 
-  verifyOTP: async (email, otp) =>
-    apiRequest('/verify', {
-      method: 'POST',
-      body: JSON.stringify({ email, otp }),
+  verifyOTP: async (data) =>
+    apiRequest("/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        email: data.email,
+        otp: data.otp,
+        isAdminLogin: data.isAdminLogin || false,
+      }),
     }),
 };
 
 // User APIs
 export const userAPI = {
-  getProfile: () => apiRequest('/me'),
-  getBalance: () => apiRequest('/balance'),
-  getAllUsers: () => apiRequest('/user/all'),
+  getProfile: () => apiRequest("/me"),
+  getBalance: () => apiRequest("/balance"),
+  getAllUsers: () => apiRequest("/user/all"),
 };
 
 // Transaction APIs
 export const transactionAPI = {
   initiateTransaction: (data) =>
-    apiRequest('/transaction/initiate', {
-      method: 'POST',
+    apiRequest("/transaction/initiate", {
+      method: "POST",
       body: JSON.stringify({
         amount: data.amount,
         password: data.password,
@@ -71,25 +77,30 @@ export const transactionAPI = {
     }),
 
   verifyTransaction: (otp, transactionId) =>
-    apiRequest('/transaction/verify', {
-      method: 'POST',
+    apiRequest("/transaction/verify", {
+      method: "POST",
       body: JSON.stringify({ otp, transactionId }),
     }),
 
-  getHistory: () => apiRequest('/transactions'),
+  getHistory: () => apiRequest("/transactions"),
 };
 
 // Helpers
 export const authHelpers = {
-  setToken: (t) => localStorage.setItem('token', t),
+  setToken: (t) => localStorage.setItem("token", t),
   getToken,
-  removeToken: () => localStorage.removeItem('token'),
-  setUser: (u) => localStorage.setItem('user', JSON.stringify(u)),
-  getUser: () => JSON.parse(localStorage.getItem('user')),
-  removeUser: () => localStorage.removeItem('user'),
+  removeToken: () => localStorage.removeItem("token"),
+
+  setUser: (u) => localStorage.setItem("user", JSON.stringify(u)),
+  getUser: () => JSON.parse(localStorage.getItem("user")),
+  removeUser: () => localStorage.removeItem("user"),
+
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("isAdmin");
+    localStorage.removeItem("adminUser");
   },
-  isAuthenticated: () => !!localStorage.getItem('token'),
+
+  isAuthenticated: () => !!localStorage.getItem("token"),
 };

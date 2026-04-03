@@ -8,7 +8,7 @@ import { Response } from "express";
 
 // Login User
 export const loginUser = TryCatch(async (req, res) => {
-  const { email, accountNumber, password } = req.body;
+  const { email, accountNumber, password, isAdminLogin } = req.body;
 
   if (!password) {
     res.status(400).json({
@@ -44,6 +44,13 @@ export const loginUser = TryCatch(async (req, res) => {
     });
     return;
   }
+
+  if (isAdminLogin && !user.isAdmin) {
+  res.status(403).json({
+    message: "You are not authorized to access admin panel",
+  });
+  return;
+}
 
   const rateLimitKey = `otp:ratelimit:${user.email}`;
   const rateLimit = await redisClient.get(rateLimitKey); //rate Limit

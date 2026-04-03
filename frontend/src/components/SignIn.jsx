@@ -98,12 +98,21 @@ export const SignIn = () => {
           </button>
         </form>
 
-        <p className="text-gray-600 text-sm mt-6">
-          Don’t have an account?{" "}
-          <Link to="/signup" className="text-blue-600 hover:underline font-medium">
-            Sign Up
-          </Link>
-        </p>
+        <div className="flex justify-between mt-6 text-sm">
+  <p className="text-gray-600">
+    Don’t have an account?{" "}
+    <Link to="/signup" className="text-blue-600 hover:underline font-medium">
+      Sign Up
+    </Link>
+  </p>
+
+  <Link
+    to="/admin/login"
+    className="text-red-600 hover:underline font-medium"
+  >
+    Admin Login
+  </Link>
+</div>
       </div>
 
       {/* Right Section */}

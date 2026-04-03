@@ -10,13 +10,15 @@ import { TransactionOTPVerification } from "./components/TransactionOTPVerificat
 import { TransactionHistory } from "./components/TransactionHistory";
 import { TransferFunds } from "./components/TransferFunds";
 import { AccountSuccess } from "./components/AccountSuccess";
+import { AdminSignIn } from "./components/AdminSignIn";
+import { AdminDashboard } from "./components/AdminDashboard";
 
 // Layout wrapper to handle sidebar visibility + scroll logic
 function Layout() {
   const location = useLocation();
 
   // Routes where sidebar should be hidden
-  const noSidebarRoutes = ["/", "/signup", "/verify-otp", "/transaction-otp" ,"/account-success"];
+  const noSidebarRoutes = ["/", "/signup", "/verify-otp", "/transaction-otp" ,"/account-success", "/admin/login", "/admin/dashboard"];
   const hideSidebar = noSidebarRoutes.includes(location.pathname);
 
   // Routes that need scroll (only applied if sidebar is shown)
@@ -44,6 +46,8 @@ function Layout() {
           <Route path="/transactions" element={<TransactionHistory />} />
           <Route path="/transfer" element={<TransferFunds />} />
           <Route path="/account-success" element={<AccountSuccess />} />
+          <Route path="/admin/login" element={<AdminSignIn />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
         </Routes>
       </main>
     </div>
