@@ -11,7 +11,7 @@ import { TransactionHistory } from "./components/TransactionHistory";
 import { TransferFunds } from "./components/TransferFunds";
 import { AccountSuccess } from "./components/AccountSuccess";
 import { AdminSignIn } from "./components/AdminSignIn";
-import { AdminDashboard } from "./components/AdminDashboard";
+import AdminDashboard  from "./components/AdminDashboard";
 
 // Layout wrapper to handle sidebar visibility + scroll logic
 function Layout() {
