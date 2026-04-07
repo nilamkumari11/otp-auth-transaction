@@ -51,7 +51,9 @@ export function TransferFunds() {
 
       // navigate to OTP verification page
       navigate("/transaction-otp", {
-        state: { transactionId: res.transactionId },
+        state: { transactionId: res.transactionId,
+          expirySeconds: res.expirySeconds,//added
+        },
       });
     } catch (err) {
       alert(err.message || "Transaction failed");

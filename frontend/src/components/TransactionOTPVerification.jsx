@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { transactionAPI } from "../services/api";
 
@@ -10,6 +10,25 @@ export const TransactionOTPVerification = () => {
 
   // TransactionId stored in TransferFunds redirect
   const transactionId = location.state?.transactionId;
+  const expirySeconds = location.state?.expirySeconds || 0;
+const [timeLeft, setTimeLeft] = useState(0);
+  useEffect(() => {
+  if (expirySeconds === undefined) return;
+
+  setTimeLeft(expirySeconds);
+
+  const timer = setInterval(() => {
+    setTimeLeft((prev) => {
+      if (prev <= 1) {
+        clearInterval(timer);
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, [expirySeconds]);
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -18,6 +37,11 @@ export const TransactionOTPVerification = () => {
       alert("Please enter OTP");
       return;
     }
+
+    if (timeLeft === 0) {
+    alert("OTP expired. Please initiate again.");
+    return;
+  }
 
     if (!transactionId) {
       alert("Transaction ID not found. Please initiate a new transaction.");
@@ -49,6 +73,20 @@ export const TransactionOTPVerification = () => {
           Enter the OTP sent to your registered email to complete the transaction.
         </p>
 
+        <p className="text-sm text-gray-600 mb-3">
+  OTP expires in:{" "}
+  <span className="font-semibold">
+    {Math.floor(timeLeft / 60)}m {timeLeft % 60}s
+  </span>
+</p>
+
+{timeLeft === 0 && (
+  <p className="text-red-500 text-sm mb-3">
+    OTP expired. Please initiate again.
+  </p>
+)}
+        
+
         <form onSubmit={handleVerify}>
           <input
             type="text"
@@ -59,13 +97,21 @@ export const TransactionOTPVerification = () => {
             disabled={loading}
           />
 
-          <button
+          {/* <button
             type="submit"
             disabled={loading}
             className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400 disabled:cursor-not-allowed"
           >
             {loading ? "Verifying..." : "Verify Transaction"}
-          </button>
+          </button> */}
+
+<button
+          type="submit"
+          disabled={loading || timeLeft === 0}
+          className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400 disabled:cursor-not-allowed"
+        >
+          {loading ? "Verifying..." : "Verify Transaction"}
+        </button>
 
           <button
             type="button"

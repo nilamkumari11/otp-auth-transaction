@@ -13,12 +13,22 @@ const apiRequest = async (endpoint, options = {}) => {
   };
 
   const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(url, { ...options, headers });
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, {
+    ...options,
+    headers,
+  });
+
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.message || "Something went wrong");
+  if (!res.ok) {
+    throw new Error(data.message || "Something went wrong");
+  }
+
   return data;
 };
 
@@ -40,9 +50,9 @@ export const authAPI = {
       method: "POST",
       body: JSON.stringify({
         email: creds.email,
-        password: creds.password,
         accountNumber: creds.accountNumber,
-        isAdminLogin: creds.isAdminLogin || false,
+        password: creds.password,
+        isAdminLogin: creds.isAdminLogin === true,
       }),
     }),
 
@@ -52,7 +62,7 @@ export const authAPI = {
       body: JSON.stringify({
         email: data.email,
         otp: data.otp,
-        isAdminLogin: data.isAdminLogin || false,
+        isAdminLogin: data.isAdminLogin === true,
       }),
     }),
 };
@@ -60,7 +70,9 @@ export const authAPI = {
 // User APIs
 export const userAPI = {
   getProfile: () => apiRequest("/me"),
+
   getBalance: () => apiRequest("/balance"),
+
   getAllUsers: () => apiRequest("/user/all"),
 };
 
@@ -79,21 +91,41 @@ export const transactionAPI = {
   verifyTransaction: (otp, transactionId) =>
     apiRequest("/transaction/verify", {
       method: "POST",
-      body: JSON.stringify({ otp, transactionId }),
+      body: JSON.stringify({
+        otp,
+        transactionId,
+      }),
     }),
 
   getHistory: () => apiRequest("/transactions"),
 };
 
-// Helpers
+// Local Storage Helpers
 export const authHelpers = {
-  setToken: (t) => localStorage.setItem("token", t),
+  setToken: (token) => localStorage.setItem("token", token),
+
   getToken,
+
   removeToken: () => localStorage.removeItem("token"),
 
-  setUser: (u) => localStorage.setItem("user", JSON.stringify(u)),
-  getUser: () => JSON.parse(localStorage.getItem("user")),
-  removeUser: () => localStorage.removeItem("user"),
+  setUser: (user) => {
+    localStorage.setItem("user", JSON.stringify(user));
+
+    // store admin flag separately also
+    localStorage.setItem("isAdmin", user?.isAdmin ? "true" : "false");
+  },
+
+  getUser: () => {
+    const user = localStorage.getItem("user");
+    return user ? JSON.parse(user) : null;
+  },
+
+  removeUser: () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("isAdmin");
+  },
+
+  isAdmin: () => localStorage.getItem("isAdmin") === "true",
 
   logout: () => {
     localStorage.removeItem("token");

@@ -8,6 +8,7 @@ import { Response } from "express";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { Transaction } from "../model/Transaction.js";
+import { analytics } from "./user.js";
 
 // TEMP transaction structure for Redis storage
 interface ITempTransactionData {
@@ -45,16 +46,66 @@ export const initiateTransaction = TryCatch(
       return res.status(400).json({ message: "Invalid transaction amount" });
     }
 
-    // 1. FETCH SENDER — Ensure we have the latest user data
+    const userIp =
+  (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+  req.socket.remoteAddress ||
+  ""; //  added location
+    
+   // 1. FETCH SENDER — Ensure we have the latest user data
     const senderUser = await User.findById<IUser>(sender._id).exec();
     if (!senderUser) {
       return res.status(404).json({ message: "Sender user not found" });
     }
 
+
     // BALANCE CHECK
     if (senderUser.balance < transactionAmount) {
       return res.status(400).json({ message: "Insufficient balance" });
     }
+
+  //added location
+    const ipKey = `user:lastip:${senderUser._id}`;
+const lastIp = await redisClient.get(ipKey);
+
+const isUnknownLocation = lastIp !== null && lastIp !== userIp;
+//till
+//added
+      // 🔥 OTP expiry logic add karo
+     const LARGE_AMOUNT = 701;
+
+let expirySeconds;
+
+if (isUnknownLocation) {
+  expirySeconds = 60; // 🌍 unknown → 1 min
+} else if (transactionAmount >= LARGE_AMOUNT) {
+  expirySeconds = 30; // 💰 large → 30 sec
+} else {
+  expirySeconds = 300; // 🙂 normal → 5 min
+}
+
+console.log("User IP:", userIp);
+console.log("Last IP:", lastIp);
+console.log("Unknown:", isUnknownLocation);
+console.log("Expiry:", expirySeconds);
+     // const expiryText = expirySeconds === 30 ? "30 seconds" : "5 minutes"; 
+     let expiryText;
+
+if (expirySeconds === 30) expiryText = "30 seconds";
+else if (expirySeconds === 60) expiryText = "1 minute";
+else expiryText = "5 minutes";
+
+//till
+
+    // // 1. FETCH SENDER — Ensure we have the latest user data
+    // const senderUser = await User.findById<IUser>(sender._id).exec();
+    // if (!senderUser) {
+    //   return res.status(404).json({ message: "Sender user not found" });
+    // }
+
+    // // BALANCE CHECK
+    // if (senderUser.balance < transactionAmount) {
+    //   return res.status(400).json({ message: "Insufficient balance" });
+    // }
 
     // 3. PASSWORD VERIFY
     const isPasswordValid = await bcrypt.compare(password, senderUser.password);
@@ -104,20 +155,36 @@ export const initiateTransaction = TryCatch(
 
     await redisClient
       .multi()
-      .set(otpKey, otp, { EX: 300 }) // OTP valid for 5 minutes
-      .set(transactionDetailsKey, JSON.stringify(transactionData), { EX: 300 }) // Temp data valid for 5 minutes
+      .set(otpKey, otp, { EX: expirySeconds }) //added
+       .set(transactionDetailsKey, JSON.stringify(transactionData), { EX: expirySeconds }) //added
+      // .set(otpKey, otp, { EX: 300 }) // OTP valid for 5 minutes
+      // .set(transactionDetailsKey, JSON.stringify(transactionData), { EX: 300 }) // Temp data valid for 5 minutes
       .set(rateLimitKey, "true", { EX: 60 }) // Rate limit for 1 minute
       .exec();
+
+      analytics.totalOTPGenerated += 1;
+
+        const today = new Date().toLocaleDateString("en-US", {
+          weekday: "short",
+        });
+
+        analytics.dailyOTPData[today] =
+          (analytics.dailyOTPData[today] || 0) + 1;
+
     await publishToQueue("send-otp", {
       to: email,
       subject: "Your Transaction OTP",
-      body: `Your OTP for transaction of ₹${transactionAmount} to ${recipientAccountNumber} is ${otp}, valid for 5 minutes.`,
+      body: `Your OTP for transaction of ₹${transactionAmount} to ${recipientAccountNumber} is ${otp}, valid for ${expiryText}`,
     });
+
+    // added location
+await redisClient.set(ipKey, userIp, { EX: 60 * 60 * 24 * 7 }); // 7 days
 
     res.status(200).json({
       message:
         "OTP sent to your email. Please verify to complete the transaction.",
       transactionId,
+      expirySeconds,
     });
   }
 );
@@ -148,9 +215,25 @@ export const verifyTransactionOTP = TryCatch(
     const storedOtp = await redisClient.get(otpKey);
 
     if (!storedOtp || storedOtp !== otp) {
-      await redisClient.del(otpKey); // Delete invalid OTP to prevent reuse
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
+  analytics.failedAttempts += 1;
+
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+  });
+
+  if (analytics.failedAttempts % 5 === 0) {
+    analytics.blockedUsers += 1;
+
+    analytics.blockedUserTrend[today] =
+      (analytics.blockedUserTrend[today] || 0) + 1;
+  }
+
+  await redisClient.del(otpKey);
+
+  return res.status(400).json({
+    message: "Invalid or expired OTP",
+  });
+}
 
     const storedTransactionData = await redisClient.get(transactionDetailsKey);
 
@@ -164,6 +247,7 @@ export const verifyTransactionOTP = TryCatch(
     // Clean up Redis keys immediately after validation to prevent replay attacks
     await redisClient.del(otpKey);
     await redisClient.del(transactionDetailsKey);
+    analytics.totalVerified += 1;
 
     const transactionData = JSON.parse(
       storedTransactionData

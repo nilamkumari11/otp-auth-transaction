@@ -7,9 +7,12 @@ export const OTPVerification = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Values passed from SignIn / AdminSignIn
   const email = location.state?.email;
-  const isAdminLogin = location.state?.isAdminLogin || false;
+
+  // Check whether this OTP flow came from AdminSignIn
+  const isAdminLogin =
+    location.state?.isAdminLogin ||
+    sessionStorage.getItem("isAdminLogin") === "true";
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -20,30 +23,42 @@ export const OTPVerification = () => {
     }
 
     try {
-      // Verify OTP
       const response = await authAPI.verifyOTP({
         email,
         otp,
         isAdminLogin,
       });
 
-      // Save token + user
+      // Save token and user
       authHelpers.setToken(response.token);
       authHelpers.setUser(response.user);
 
-      // If admin, save admin flag and redirect to dashboard
-      if (response.isAdmin) {
+      // Only go to admin dashboard if:
+      // 1. User is admin
+      // 2. They came from admin login page
+      if (response.isAdmin && isAdminLogin) {
         localStorage.setItem("isAdmin", "true");
         localStorage.setItem("adminUser", JSON.stringify(response.user));
+
+        sessionStorage.removeItem("isAdminLogin");
 
         alert("Admin OTP Verified Successfully!");
         navigate("/admin/dashboard");
       } else {
+        // Normal login flow, even if the account is admin
+        localStorage.removeItem("isAdmin");
+
+        sessionStorage.removeItem("isAdminLogin");
+
         alert("OTP Verified Successfully!");
         navigate("/home");
       }
     } catch (err) {
-      alert(err.message || "OTP verification failed");
+      alert(
+        err?.response?.data?.message ||
+          err?.message ||
+          "OTP verification failed"
+      );
     }
   };
 

@@ -2,51 +2,86 @@ import { redisClient } from "../index.js";
 import { User } from "../model/User.js";
 import { generateToken } from "./generateToken.js";
 import TryCatch from "../config/TryCatch.js";
+import { analytics } from "./user.js";
 
 export const verifyUser = TryCatch(async (req, res) => {
   const { email, otp: enteredOTP, isAdminLogin } = req.body;
 
   if (!email || !enteredOTP) {
-    res.status(400).json({
-      message: "Email and OTP required ",
+    return res.status(400).json({
+      message: "Email and OTP required",
     });
-    return;
   }
 
-  const otpKey = `otp:${email}`;
+  // use different redis key for admin login and normal user login
+  const otpKey = isAdminLogin
+    ? `otp:admin:${email}`
+    : `otp:user:${email}`;
+
   const storedOTP = await redisClient.get(otpKey);
 
-  if (!storedOTP || storedOTP !== enteredOTP) {
-    res.status(400).json({
-      message: "Invalid OTP or expired OTP",
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "short",
+  });
+
+  // OTP wrong or expired
+  if (!storedOTP) {
+    analytics.failedAttempts += 1;
+
+    if (analytics.failedAttempts % 5 === 0) {
+      analytics.blockedUsers += 1;
+
+      analytics.blockedUserTrend[today] =
+        (analytics.blockedUserTrend[today] || 0) + 1;
+    }
+
+    return res.status(400).json({
+      message: "OTP expired or not found",
     });
-    return;
   }
 
+  // OTP entered does not match
+  if (storedOTP !== enteredOTP) {
+    analytics.failedAttempts += 1;
+
+    if (analytics.failedAttempts % 5 === 0) {
+      analytics.blockedUsers += 1;
+
+      analytics.blockedUserTrend[today] =
+        (analytics.blockedUserTrend[today] || 0) + 1;
+    }
+
+    return res.status(400).json({
+      message: "Wrong OTP",
+    });
+  }
+
+  // correct OTP
   await redisClient.del(otpKey);
 
-  let user = await User.findOne({ email }).select("-password");
+  analytics.totalVerified += 1;
+  console.log("Verified count:", analytics.totalVerified);
+
+  const user = await User.findOne({ email }).select("-password");
 
   if (!user) {
-    // User does not exist, prompt for full registration
-    res.status(404).json({
-      message: "User not found. Please complete your registration.",
+    return res.status(404).json({
+      message: "User not found. Please complete registration.",
       registrationRequired: true,
-      email: email,
+      email,
     });
-    return;
   }
 
-  if (isAdminLogin && !user.isAdmin) {
-  res.status(403).json({
-    message: "You are not authorized as admin",
-  });
-  return;
-}
+  // if someone tries admin login without being admin
+  if (isAdminLogin === true && !user.isAdmin) {
+    return res.status(403).json({
+      message: "You are not authorized as admin",
+    });
+  }
 
   const token = generateToken(user);
 
-    res.json({
+  return res.status(200).json({
     message: "User Verified",
     user,
     token,
