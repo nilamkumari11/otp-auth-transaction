@@ -17,7 +17,7 @@ export function Home() {
     }
 
     loadHomeData();
-  }, []);
+  });
 
   const loadHomeData = async () => {
     try {
@@ -34,7 +34,7 @@ export function Home() {
       //  Transactions
       const tx = await transactionAPI.getHistory();
       setTransactions(tx.transactions || []);
-    } catch (err) {
+    } catch {
       // Any auth / API error → logout
       authHelpers.logout();
       navigate("/");

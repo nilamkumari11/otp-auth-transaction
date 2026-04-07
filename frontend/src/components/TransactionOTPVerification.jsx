@@ -52,7 +52,7 @@ const [timeLeft, setTimeLeft] = useState(0);
     setLoading(true);
     try {
       // Call backend API /transaction/verify
-      const response = await transactionAPI.verifyTransaction(otp, transactionId);
+      await transactionAPI.verifyTransaction(otp, transactionId);
 
       alert("Transaction completed successfully!");
 
