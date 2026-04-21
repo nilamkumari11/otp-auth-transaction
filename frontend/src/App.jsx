@@ -12,13 +12,16 @@ import { TransferFunds } from "./components/TransferFunds";
 import { AccountSuccess } from "./components/AccountSuccess";
 import { AdminSignIn } from "./components/AdminSignIn";
 import AdminDashboard  from "./components/AdminDashboard";
+import { RegistrationOTPVerification } from "./components/RegistrationOTPVerification";
+import { ChangePassword } from "./components/ChangePassword";
+import AccountSettings from "./components/AccountSettings";
 
 // Layout wrapper to handle sidebar visibility + scroll logic
 function Layout() {
   const location = useLocation();
 
   // Routes where sidebar should be hidden
-  const noSidebarRoutes = ["/", "/signup", "/verify-otp", "/transaction-otp" ,"/account-success", "/admin/login", "/admin/dashboard"];
+  const noSidebarRoutes = ["/", "/signup", "/verify-otp", "/transaction-otp", "/verify-registration", "/account-success", "/admin/login", "/admin/dashboard", "/change-password"];
   const hideSidebar = noSidebarRoutes.includes(location.pathname);
 
   // Routes that need scroll (only applied if sidebar is shown)
@@ -45,9 +48,12 @@ function Layout() {
           <Route path="/transaction-otp" element={<TransactionOTPVerification />} />
           <Route path="/transactions" element={<TransactionHistory />} />
           <Route path="/transfer" element={<TransferFunds />} />
+          <Route path="/verify-registration" element={<RegistrationOTPVerification />} />
           <Route path="/account-success" element={<AccountSuccess />} />
           <Route path="/admin/login" element={<AdminSignIn />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/account-settings" element={<AccountSettings />} />
         </Routes>
       </main>
     </div>
@@ -56,7 +62,7 @@ function Layout() {
 
 export default function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Layout />
     </Router>
   );
